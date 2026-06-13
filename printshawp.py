@@ -56,6 +56,7 @@ def make_imposed_page(
     page_h: float,
     rotate_back: bool = False,
     page_numbers: bool = False,
+    start_page: int = 1,
 ) -> None:
     xobjects = Dictionary()
     content_parts = []
@@ -71,18 +72,21 @@ def make_imposed_page(
             content_parts.append(f"q 1 0 0 1 {tx:.4f} 0 cm /{xname} Do Q")
 
     if page_numbers:
+        offset = start_page - 1
         # Left slot: number at lower-left of the left half
-        if 1 <= left_num <= n_src:
+        if start_page <= left_num <= n_src:
+            label = str(left_num - offset)
             content_parts.append(
                 f"BT /PgNumFont {_FONT_SIZE} Tf "
-                f"{_MARGIN:.1f} {_MARGIN:.1f} Td ({left_num}) Tj ET"
+                f"{_MARGIN:.1f} {_MARGIN:.1f} Td ({label}) Tj ET"
             )
         # Right slot: number at lower-right of the right half
-        if 1 <= right_num <= n_src:
-            x = page_w * 2 - _MARGIN - len(str(right_num)) * _DIGIT_W
+        if start_page <= right_num <= n_src:
+            label = str(right_num - offset)
+            x = page_w * 2 - _MARGIN - len(label) * _DIGIT_W
             content_parts.append(
                 f"BT /PgNumFont {_FONT_SIZE} Tf "
-                f"{x:.1f} {_MARGIN:.1f} Td ({right_num}) Tj ET"
+                f"{x:.1f} {_MARGIN:.1f} Td ({label}) Tj ET"
             )
 
     content = "\n".join(content_parts).encode()
@@ -110,7 +114,12 @@ def make_imposed_page(
     out.pages.append(page)
 
 
-def create_booklet(input_path: Path, output_path: Path, page_numbers: bool = False) -> None:
+def create_booklet(
+    input_path: Path,
+    output_path: Path,
+    page_numbers: bool = False,
+    start_page: int = 1,
+) -> None:
     with Pdf.open(input_path) as src:
         n_src = len(src.pages)
         n_padded = pad_to_4(n_src)
@@ -120,8 +129,8 @@ def create_booklet(input_path: Path, output_path: Path, page_numbers: bool = Fal
 
         out = Pdf.new()
         for fl, fr, bl, br in imposition_order(n_padded):
-            make_imposed_page(out, src, fl, fr, n_src, pw, ph, rotate_back=False, page_numbers=page_numbers)
-            make_imposed_page(out, src, bl, br, n_src, pw, ph, rotate_back=True, page_numbers=page_numbers)
+            make_imposed_page(out, src, fl, fr, n_src, pw, ph, rotate_back=False, page_numbers=page_numbers, start_page=start_page)
+            make_imposed_page(out, src, bl, br, n_src, pw, ph, rotate_back=True, page_numbers=page_numbers, start_page=start_page)
 
         out.save(output_path)
 
@@ -147,6 +156,13 @@ def main():
         action="store_true",
         help="Overlay page numbers on each non-blank page",
     )
+    p.add_argument(
+        "--start-page",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Source page number to label as '1' (pages before N are not numbered)",
+    )
     args = p.parse_args()
 
     input_path = Path(args.input)
@@ -156,7 +172,7 @@ def main():
 
     output_path = Path(args.output) if args.output else input_path.with_name(input_path.stem + "-booklet.pdf")
 
-    create_booklet(input_path, output_path, page_numbers=args.page_numbers)
+    create_booklet(input_path, output_path, page_numbers=args.page_numbers, start_page=args.start_page)
 
 
 if __name__ == "__main__":
