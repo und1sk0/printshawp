@@ -13,7 +13,6 @@ import argparse
 import sys
 from pathlib import Path
 
-import pikepdf
 from pikepdf import Array, Dictionary, Name, Page, Pdf
 
 
@@ -129,7 +128,7 @@ def create_booklet(input_path: Path, output_path: Path, page_numbers: bool = Fal
     print(f"Input:  {input_path} ({n_src} pages)")
     print(f"Output: {output_path}")
     print(f"        {n_sheets} sheets, {n_padded} slots ({n_padded - n_src} blank padding)")
-    print(f"Print:  duplex, long-edge binding — then stack and fold")
+    print("Print:  duplex, long-edge binding — then stack and fold")
 
 
 def main():
