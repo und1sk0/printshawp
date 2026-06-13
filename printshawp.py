@@ -3,7 +3,7 @@
 printshawp - impose a PDF as a single-signature duplex booklet
 
 Usage:
-    python printshawp.py input.pdf [output.pdf]
+    python printshawp.py [--page-numbers] input.pdf [output.pdf]
 
 The output is designed to be printed duplex with long-edge binding,
 then sheets stacked and folded together to form a saddle-stitch booklet.
@@ -42,6 +42,11 @@ def get_page_size(page: Page) -> tuple[float, float]:
     return float(mb[2]) - float(mb[0]), float(mb[3]) - float(mb[1])
 
 
+_MARGIN = 18.0    # points from page edge (~0.25")
+_FONT_SIZE = 9
+_DIGIT_W = 4.5   # approximate Helvetica digit width at 9pt
+
+
 def make_imposed_page(
     out: Pdf,
     src: Pdf,
@@ -51,6 +56,7 @@ def make_imposed_page(
     page_w: float,
     page_h: float,
     rotate_back: bool = False,
+    page_numbers: bool = False,
 ) -> None:
     xobjects = Dictionary()
     content_parts = []
@@ -65,12 +71,37 @@ def make_imposed_page(
         else:
             content_parts.append(f"q 1 0 0 1 {tx:.4f} 0 cm /{xname} Do Q")
 
+    if page_numbers:
+        # Left slot: number at lower-left of the left half
+        if 1 <= left_num <= n_src:
+            content_parts.append(
+                f"BT /PgNumFont {_FONT_SIZE} Tf "
+                f"{_MARGIN:.1f} {_MARGIN:.1f} Td ({left_num}) Tj ET"
+            )
+        # Right slot: number at lower-right of the right half
+        if 1 <= right_num <= n_src:
+            x = page_w * 2 - _MARGIN - len(str(right_num)) * _DIGIT_W
+            content_parts.append(
+                f"BT /PgNumFont {_FONT_SIZE} Tf "
+                f"{x:.1f} {_MARGIN:.1f} Td ({right_num}) Tj ET"
+            )
+
     content = "\n".join(content_parts).encode()
+
+    helvetica = Dictionary(
+        Type=Name.Font,
+        Subtype=Name("/Type1"),
+        BaseFont=Name("/Helvetica"),
+    )
+    resources = Dictionary(
+        XObject=xobjects,
+        Font=Dictionary(PgNumFont=helvetica) if page_numbers else Dictionary(),
+    )
 
     page_dict = Dictionary(
         Type=Name.Page,
         MediaBox=Array([0, 0, page_w * 2, page_h]),
-        Resources=Dictionary(XObject=xobjects),
+        Resources=resources,
         Contents=out.make_stream(content),
     )
 
@@ -80,7 +111,7 @@ def make_imposed_page(
     out.pages.append(page)
 
 
-def create_booklet(input_path: Path, output_path: Path) -> None:
+def create_booklet(input_path: Path, output_path: Path, page_numbers: bool = False) -> None:
     with Pdf.open(input_path) as src:
         n_src = len(src.pages)
         n_padded = pad_to_4(n_src)
@@ -90,8 +121,8 @@ def create_booklet(input_path: Path, output_path: Path) -> None:
 
         out = Pdf.new()
         for fl, fr, bl, br in imposition_order(n_padded):
-            make_imposed_page(out, src, fl, fr, n_src, pw, ph, rotate_back=False)
-            make_imposed_page(out, src, bl, br, n_src, pw, ph, rotate_back=True)
+            make_imposed_page(out, src, fl, fr, n_src, pw, ph, rotate_back=False, page_numbers=page_numbers)
+            make_imposed_page(out, src, bl, br, n_src, pw, ph, rotate_back=True, page_numbers=page_numbers)
 
         out.save(output_path)
 
@@ -112,6 +143,11 @@ def main():
     )
     p.add_argument("input", help="Source PDF")
     p.add_argument("output", nargs="?", help="Output PDF (default: <input>-booklet.pdf)")
+    p.add_argument(
+        "--page-numbers",
+        action="store_true",
+        help="Overlay page numbers on each non-blank page",
+    )
     args = p.parse_args()
 
     input_path = Path(args.input)
@@ -121,7 +157,7 @@ def main():
 
     output_path = Path(args.output) if args.output else input_path.with_name(input_path.stem + "-booklet.pdf")
 
-    create_booklet(input_path, output_path)
+    create_booklet(input_path, output_path, page_numbers=args.page_numbers)
 
 
 if __name__ == "__main__":
