@@ -21,7 +21,8 @@ pip install -r requirements.txt
 
 ```
 python printshawp.py input.pdf [output.pdf]
-python printshawp.py --page-numbers input.pdf output.pdf
+python printshawp.py -p input.pdf
+python printshawp.py -p -s 3 input.pdf output.pdf
 ```
 
 If no output path is given, the output is written to `<input>-booklet.pdf`.
@@ -30,7 +31,13 @@ If no output path is given, the output is written to `<input>-booklet.pdf`.
 
 | Flag | Description |
 |------|-------------|
-| `--page-numbers` | Overlay page numbers on each non-blank page — lower-left for left-side pages, lower-right for right-side pages |
+| `-p`, `--page-numbers` | Overlay page numbers on each non-blank page — lower-left for left-side pages, lower-right for right-side pages |
+| `-s N`, `--start-page N` | Label source page N as "1"; pages before N receive no number (overrides auto-detection) |
+| `-n`, `--no-cover` | Number all pages from 1, including the first page (for inserts with no cover) |
+
+By default, `--page-numbers` auto-detects the first page with text content and starts numbering
+there — cover photos and blank inside-cover pages are skipped automatically. The detected start
+page is printed so you can catch misdetection and override with `-s`.
 
 ## Printing
 
