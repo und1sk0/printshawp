@@ -13,16 +13,45 @@ back-facing sides for long-edge duplex binding. Optionally overlays page numbers
 - Python 3.10+
 - [pikepdf](https://pikepdf.readthedocs.io/)
 
+## Install
+
+Install as a standalone `printshawp` command with [uv](https://docs.astral.sh/uv/):
+
+```
+uv tool install git+https://github.com/und1sk0/printshawp
+```
+
+This puts `printshawp` on your `PATH` so you can run it from anywhere. Use
+`uv tool upgrade printshawp` to update it, and `uv tool uninstall printshawp`
+to remove it.
+
+> **Developing locally?** From a checkout of this repo you can install the
+> command straight from the working tree with `uv tool install .` (add
+> `--force` to reinstall over an existing install). This reflects your local
+> changes instead of pulling from GitHub.
+
+### Run without installing
+
+```
+uv run printshawp input.pdf
+```
+
+`uv run` builds the project into an isolated environment on first use and runs
+the command — no global install required.
+
+### Plain pip
+
 ```
 pip install -r requirements.txt
+python printshawp.py input.pdf
 ```
 
 ## Usage
 
 ```
-python printshawp.py input.pdf [output.pdf]
-python printshawp.py -p input.pdf
-python printshawp.py -p -s 3 input.pdf output.pdf
+printshawp input.pdf [output.pdf]
+printshawp -p input.pdf
+printshawp -p -s 3 input.pdf output.pdf
 ```
 
 If no output path is given, the output is written to `<input>-booklet.pdf`.
