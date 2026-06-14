@@ -152,16 +152,22 @@ def main():
     p.add_argument("input", help="Source PDF")
     p.add_argument("output", nargs="?", help="Output PDF (default: <input>-booklet.pdf)")
     p.add_argument(
-        "--page-numbers",
+        "-p", "--page-numbers",
         action="store_true",
         help="Overlay page numbers on each non-blank page",
     )
-    p.add_argument(
-        "--start-page",
+    pg = p.add_mutually_exclusive_group()
+    pg.add_argument(
+        "-s", "--start-page",
         type=int,
         default=1,
         metavar="N",
         help="Source page number to label as '1' (pages before N are not numbered)",
+    )
+    pg.add_argument(
+        "-n", "--no-cover",
+        action="store_true",
+        help="Number from page 1 (use when the booklet has no cover, e.g. an insert)",
     )
     args = p.parse_args()
 
@@ -172,7 +178,8 @@ def main():
 
     output_path = Path(args.output) if args.output else input_path.with_name(input_path.stem + "-booklet.pdf")
 
-    create_booklet(input_path, output_path, page_numbers=args.page_numbers, start_page=args.start_page)
+    start_page = 1 if args.no_cover else args.start_page
+    create_booklet(input_path, output_path, page_numbers=args.page_numbers, start_page=start_page)
 
 
 if __name__ == "__main__":
