@@ -16,6 +16,24 @@ from pathlib import Path
 from pikepdf import Array, Dictionary, Name, Page, Pdf
 
 
+def find_first_text_page(src: Pdf) -> int:
+    """Return 1-indexed number of first page whose content stream contains text operators."""
+    for i, page in enumerate(src.pages):
+        try:
+            contents = page.get("/Contents")
+            if contents is None:
+                continue
+            try:
+                data = contents.read_bytes()
+            except Exception:
+                data = b"".join(s.read_bytes() for s in contents)
+            if b"BT" in data:
+                return i + 1
+        except Exception:
+            continue
+    return 1
+
+
 def pad_to_4(n: int) -> int:
     return ((n + 3) // 4) * 4
 
@@ -118,10 +136,19 @@ def create_booklet(
     input_path: Path,
     output_path: Path,
     page_numbers: bool = False,
-    start_page: int = 1,
+    start_page: int | None = None,
 ) -> None:
     with Pdf.open(input_path) as src:
         n_src = len(src.pages)
+        if start_page is None:
+            if page_numbers:
+                start_page = find_first_text_page(src)
+                print(f"Page numbers: starting from source page {start_page} (auto-detected)")
+            else:
+                start_page = 1
+        elif not (1 <= start_page <= n_src):
+            print(f"Error: --start-page {start_page} out of range (document has {n_src} pages)", file=sys.stderr)
+            sys.exit(1)
         n_padded = pad_to_4(n_src)
         n_sheets = n_padded // 4
 
@@ -160,14 +187,14 @@ def main():
     pg.add_argument(
         "-s", "--start-page",
         type=int,
-        default=1,
+        default=None,
         metavar="N",
         help="Source page number to label as '1' (pages before N are not numbered)",
     )
     pg.add_argument(
         "-n", "--no-cover",
         action="store_true",
-        help="Number from page 1 (use when the booklet has no cover, e.g. an insert)",
+        help="Number all pages from 1 (use when the booklet has no cover, e.g. an insert)",
     )
     args = p.parse_args()
 
@@ -178,7 +205,10 @@ def main():
 
     output_path = Path(args.output) if args.output else input_path.with_name(input_path.stem + "-booklet.pdf")
 
-    start_page = 1 if args.no_cover else args.start_page
+    if args.no_cover:
+        start_page = 1
+    else:
+        start_page = args.start_page  # None means auto-detect
     create_booklet(input_path, output_path, page_numbers=args.page_numbers, start_page=start_page)
 
 
